@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ポモドーロタイマー</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+    <div class="app-container">
+        <div class="card">
+            <!-- ウィンドウ風ヘッダー -->
+            <div class="card-header">
+                <span class="card-title">ポモドーロタイマー</span>
+                <div class="window-controls">
+                    <span class="control">ー</span>
+                    <span class="control">□</span>
+                    <span class="control">×</span>
+                </div>
+            </div>
+
+            <!-- モード表示 -->
+            <div class="mode-label" id="mode-label">作業中</div>
+
+            <!-- 円形タイマー -->
+            <div class="timer-container">
+                <svg class="timer-ring" viewBox="0 0 200 200">
+                    <circle class="timer-ring-bg" cx="100" cy="100" r="85" />
+                    <circle class="timer-ring-progress" id="timer-ring-progress" cx="100" cy="100" r="85" />
+                </svg>
+                <div class="timer-display" id="timer-display">25:00</div>
+            </div>
+
+            <!-- 操作ボタン -->
+            <div class="button-group">
+                <button class="btn btn-primary" id="btn-start">開始</button>
+                <button class="btn btn-outline" id="btn-reset">リセット</button>
+            </div>
+
+            <!-- 今日の進捗 -->
+            <div class="progress-card">
+                <div class="progress-title">今日の進捗</div>
+                <div class="progress-stats">
+                    <div class="stat">
+                        <div class="stat-value" id="completed-count">0</div>
+                        <div class="stat-label">完了</div>
+                    </div>
+                    <div class="stat">
+                        <div class="stat-value" id="total-focus-time">0分</div>
+                        <div class="stat-label">集中時間</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="{{ url_for('static', filename='js/timer.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/ui.js') }}"></script>
+</body>
+</html>
