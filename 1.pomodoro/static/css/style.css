@@ -1,0 +1,181 @@
+/* ===== リセット & ベース ===== */
+*,
+*::before,
+*::after {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Segoe UI', 'Hiragino Sans', 'Meiryo', sans-serif;
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(135deg, #6C63FF 0%, #8B7FFF 50%, #A594FF 100%);
+}
+
+/* ===== カード ===== */
+.app-container {
+    width: 100%;
+    max-width: 360px;
+    padding: 16px;
+}
+
+.card {
+    background: #ffffff;
+    border-radius: 24px;
+    padding: 24px 28px 0;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.15);
+    overflow: hidden;
+}
+
+/* ===== ウィンドウ風ヘッダー ===== */
+.card-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 16px;
+}
+
+.card-title {
+    font-size: 18px;
+    font-weight: 700;
+    color: #1a1a2e;
+}
+
+.window-controls {
+    display: flex;
+    gap: 10px;
+}
+
+.window-controls .control {
+    font-size: 12px;
+    color: #999;
+    cursor: default;
+}
+
+/* ===== モード表示 ===== */
+.mode-label {
+    text-align: center;
+    font-size: 16px;
+    color: #555;
+    margin-bottom: 20px;
+}
+
+/* ===== 円形タイマー ===== */
+.timer-container {
+    position: relative;
+    width: 200px;
+    height: 200px;
+    margin: 0 auto 24px;
+}
+
+.timer-ring {
+    width: 100%;
+    height: 100%;
+    transform: rotate(-90deg);
+}
+
+.timer-ring-bg {
+    fill: none;
+    stroke: #e8e8e8;
+    stroke-width: 10;
+}
+
+.timer-ring-progress {
+    fill: none;
+    stroke: #6C63FF;
+    stroke-width: 10;
+    stroke-linecap: round;
+    stroke-dasharray: 534.07;  /* 2 * π * 85 */
+    stroke-dashoffset: 0;
+    transition: stroke-dashoffset 0.5s ease;
+}
+
+.timer-display {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    font-size: 48px;
+    font-weight: 700;
+    color: #1a1a2e;
+    letter-spacing: 2px;
+}
+
+/* ===== ボタン ===== */
+.button-group {
+    display: flex;
+    justify-content: center;
+    gap: 16px;
+    margin-bottom: 24px;
+}
+
+.btn {
+    padding: 10px 28px;
+    border-radius: 24px;
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    border: 2px solid #6C63FF;
+}
+
+.btn-primary {
+    background: #6C63FF;
+    color: #ffffff;
+    border-color: #6C63FF;
+}
+
+.btn-primary:hover {
+    background: #5a52e0;
+    border-color: #5a52e0;
+}
+
+.btn-outline {
+    background: transparent;
+    color: #6C63FF;
+    border-color: #6C63FF;
+}
+
+.btn-outline:hover {
+    background: #f0eeff;
+}
+
+/* ===== 今日の進捗 ===== */
+.progress-card {
+    background: #f5f5f7;
+    border-radius: 16px 16px 0 0;
+    margin: 0 -28px;
+    padding: 20px 28px 24px;
+}
+
+.progress-title {
+    font-size: 14px;
+    font-weight: 700;
+    color: #1a1a2e;
+    margin-bottom: 12px;
+}
+
+.progress-stats {
+    display: flex;
+    justify-content: space-around;
+}
+
+.stat {
+    text-align: center;
+}
+
+.stat-value {
+    font-size: 24px;
+    font-weight: 700;
+    color: #6C63FF;
+}
+
+.stat-label {
+    font-size: 12px;
+    color: #888;
+    margin-top: 4px;
+}
