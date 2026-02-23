@@ -1,0 +1,488 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ポモドーロタイマー</title>
+  <style>
+    /* ===== Base ===== */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      font-family: 'Segoe UI', sans-serif;
+      background: #0d1117;
+      color: #e6edf3;
+      overflow: hidden;
+      position: relative;
+    }
+
+    /* ===== Background canvas ===== */
+    #bgCanvas {
+      position: fixed;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    /* ===== Main card ===== */
+    .card {
+      position: relative;
+      z-index: 1;
+      background: rgba(22, 27, 34, 0.85);
+      backdrop-filter: blur(12px);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 24px;
+      padding: 48px 56px;
+      text-align: center;
+      box-shadow: 0 24px 80px rgba(0, 0, 0, 0.6);
+      min-width: 360px;
+    }
+
+    h1 {
+      font-size: 1.6rem;
+      font-weight: 700;
+      letter-spacing: 0.12em;
+      margin-bottom: 8px;
+      opacity: 0.9;
+    }
+
+    .mode-label {
+      font-size: 0.85rem;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      opacity: 0.5;
+      margin-bottom: 36px;
+      transition: opacity 0.4s;
+    }
+
+    /* ===== Circular progress ===== */
+    .progress-ring-wrap {
+      position: relative;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 36px;
+    }
+
+    .progress-ring {
+      transform: rotate(-90deg);
+      filter: drop-shadow(0 0 12px var(--accent));
+      transition: filter 0.6s;
+    }
+
+    .progress-ring__track {
+      fill: none;
+      stroke: rgba(255, 255, 255, 0.07);
+      stroke-width: 10;
+    }
+
+    .progress-ring__bar {
+      fill: none;
+      stroke: var(--accent);
+      stroke-width: 10;
+      stroke-linecap: round;
+      transition: stroke-dashoffset 1s linear, stroke 0.6s ease;
+    }
+
+    .time-display {
+      position: absolute;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .time-display .digits {
+      font-size: 3.4rem;
+      font-weight: 700;
+      font-variant-numeric: tabular-nums;
+      letter-spacing: 0.04em;
+      color: var(--accent);
+      transition: color 0.6s ease;
+      text-shadow: 0 0 20px var(--accent-glow);
+    }
+
+    .time-display .pct {
+      font-size: 0.75rem;
+      opacity: 0.4;
+      letter-spacing: 0.08em;
+      margin-top: 2px;
+    }
+
+    /* ===== CSS custom properties for accent color ===== */
+    :root {
+      --accent: #58a6ff;
+      --accent-glow: rgba(88, 166, 255, 0.4);
+    }
+
+    /* ===== Controls ===== */
+    .controls {
+      display: flex;
+      gap: 16px;
+      justify-content: center;
+      margin-bottom: 28px;
+    }
+
+    button {
+      border: none;
+      border-radius: 999px;
+      cursor: pointer;
+      font-size: 0.9rem;
+      font-weight: 600;
+      letter-spacing: 0.06em;
+      padding: 12px 32px;
+      transition: transform 0.15s, box-shadow 0.15s, opacity 0.15s;
+    }
+
+    button:active { transform: scale(0.96); }
+
+    #btnStartPause {
+      background: var(--accent);
+      color: #0d1117;
+      box-shadow: 0 0 20px var(--accent-glow);
+      transition: background 0.6s, box-shadow 0.6s;
+    }
+
+    #btnStartPause:hover { opacity: 0.9; }
+
+    #btnReset {
+      background: rgba(255, 255, 255, 0.08);
+      color: #e6edf3;
+    }
+
+    #btnReset:hover { background: rgba(255, 255, 255, 0.14); }
+
+    /* ===== Mode tabs ===== */
+    .mode-tabs {
+      display: flex;
+      gap: 8px;
+      justify-content: center;
+      margin-bottom: 0;
+    }
+
+    .tab {
+      background: transparent;
+      color: rgba(255, 255, 255, 0.4);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      padding: 6px 20px;
+      font-size: 0.78rem;
+      transition: background 0.2s, color 0.2s, border-color 0.2s;
+    }
+
+    .tab.active {
+      background: rgba(255, 255, 255, 0.1);
+      color: #e6edf3;
+      border-color: rgba(255, 255, 255, 0.25);
+    }
+
+    /* ===== Ripple overlay ===== */
+    .ripple-container {
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      z-index: 2;
+      overflow: hidden;
+    }
+
+    .ripple {
+      position: absolute;
+      border-radius: 50%;
+      border: 2px solid var(--accent);
+      transform: scale(0);
+      opacity: 1;
+      animation: rippleAnim 1.4s ease-out forwards;
+    }
+
+    @keyframes rippleAnim {
+      to { transform: scale(6); opacity: 0; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- Background particle canvas -->
+<canvas id="bgCanvas"></canvas>
+
+<!-- Ripple container -->
+<div class="ripple-container" id="rippleContainer"></div>
+
+<!-- Main card -->
+<div class="card">
+  <h1>🍅 ポモドーロタイマー</h1>
+  <div class="mode-label" id="modeLabel">集中タイム</div>
+
+  <!-- Circular progress -->
+  <div class="progress-ring-wrap">
+    <svg class="progress-ring" width="220" height="220" viewBox="0 0 220 220">
+      <circle class="progress-ring__track" cx="110" cy="110" r="98" />
+      <circle class="progress-ring__bar" id="progressBar" cx="110" cy="110" r="98" />
+    </svg>
+    <div class="time-display">
+      <span class="digits" id="timeDisplay">25:00</span>
+      <span class="pct" id="pctDisplay">100%</span>
+    </div>
+  </div>
+
+  <!-- Controls -->
+  <div class="controls">
+    <button id="btnStartPause">▶ スタート</button>
+    <button id="btnReset">↺ リセット</button>
+  </div>
+
+  <!-- Mode selector -->
+  <div class="mode-tabs">
+    <button class="tab active" data-mode="focus" data-duration="25">集中 25分</button>
+    <button class="tab" data-mode="short" data-duration="5">短休憩 5分</button>
+    <button class="tab" data-mode="long" data-duration="15">長休憩 15分</button>
+  </div>
+</div>
+
+<script>
+/* ============================================================
+   ポモドーロタイマー — 視覚的フィードバック強化版
+   ============================================================ */
+
+// ── 定数 ─────────────────────────────────────────────────────
+const RADIUS = 98;
+const CIRCUMFERENCE = 2 * Math.PI * RADIUS;
+
+// アクセントカラー（青→黄→赤）
+const COLORS = {
+  blue:   { accent: '#58a6ff', glow: 'rgba(88,166,255,0.45)' },
+  yellow: { accent: '#ffd700', glow: 'rgba(255,215,0,0.45)'  },
+  red:    { accent: '#ff5c5c', glow: 'rgba(255,92,92,0.45)'  },
+};
+
+// ── 状態 ─────────────────────────────────────────────────────
+let totalSeconds = 25 * 60;
+let remaining    = totalSeconds;
+let running      = false;
+let intervalId   = null;
+let currentMode  = 'focus';
+
+// ── DOM 要素 ─────────────────────────────────────────────────
+const progressBar   = document.getElementById('progressBar');
+const timeDisplay   = document.getElementById('timeDisplay');
+const pctDisplay    = document.getElementById('pctDisplay');
+const modeLabel     = document.getElementById('modeLabel');
+const btnStartPause = document.getElementById('btnStartPause');
+const btnReset      = document.getElementById('btnReset');
+const tabs          = document.querySelectorAll('.tab');
+const rippleCont    = document.getElementById('rippleContainer');
+const root          = document.documentElement;
+
+// ── 初期化 ─────────────────────────────────────────────────
+progressBar.style.strokeDasharray  = CIRCUMFERENCE;
+progressBar.style.strokeDashoffset = 0;
+
+// ── ユーティリティ ─────────────────────────────────────────
+function fmt(sec) {
+  const m = String(Math.floor(sec / 60)).padStart(2, '0');
+  const s = String(sec % 60).padStart(2, '0');
+  return `${m}:${s}`;
+}
+
+function setAccentColor(key) {
+  const c = COLORS[key];
+  root.style.setProperty('--accent',      c.accent);
+  root.style.setProperty('--accent-glow', c.glow);
+  btnStartPause.style.background  = c.accent;
+  btnStartPause.style.boxShadow   = `0 0 20px ${c.glow}`;
+}
+
+function getColorKey(pct) {
+  if (pct > 0.60) return 'blue';
+  if (pct > 0.25) return 'yellow';
+  return 'red';
+}
+
+function updateUI() {
+  const pct    = remaining / totalSeconds;
+  const offset = CIRCUMFERENCE * (1 - pct);
+
+  progressBar.style.strokeDashoffset = offset;
+  timeDisplay.textContent = fmt(remaining);
+  pctDisplay.textContent  = Math.round(pct * 100) + '%';
+
+  const colorKey = getColorKey(pct);
+  setAccentColor(colorKey);
+  document.title = `🍅 ${fmt(remaining)} — ポモドーロ`;
+}
+
+// ── タイマー制御 ─────────────────────────────────────────────
+function tick() {
+  if (remaining <= 0) {
+    clearInterval(intervalId);
+    running = false;
+    btnStartPause.textContent = '▶ スタート';
+    spawnRipple();
+    playBell();
+    particles.forEach(p => { p.active = (currentMode === 'focus'); });
+    return;
+  }
+  remaining--;
+  updateUI();
+}
+
+function startPause() {
+  if (running) {
+    clearInterval(intervalId);
+    running = false;
+    btnStartPause.textContent = '▶ 再開';
+    particles.forEach(p => { p.active = false; });
+  } else {
+    intervalId = setInterval(tick, 1000);
+    running = true;
+    btnStartPause.textContent = '⏸ 一時停止';
+    spawnRipple();
+    if (currentMode === 'focus') particles.forEach(p => { p.active = true; });
+  }
+}
+
+function reset() {
+  clearInterval(intervalId);
+  running = false;
+  remaining = totalSeconds;
+  btnStartPause.textContent = '▶ スタート';
+  updateUI();
+  particles.forEach(p => { p.active = false; });
+}
+
+// ── モード切替 ─────────────────────────────────────────────
+const modeNames = { focus: '集中タイム', short: '短い休憩', long: '長い休憩' };
+
+tabs.forEach(tab => {
+  tab.addEventListener('click', () => {
+    clearInterval(intervalId);
+    running = false;
+    currentMode  = tab.dataset.mode;
+    totalSeconds = parseInt(tab.dataset.duration) * 60;
+    remaining    = totalSeconds;
+    tabs.forEach(t => t.classList.remove('active'));
+    tab.classList.add('active');
+    modeLabel.textContent = modeNames[currentMode];
+    btnStartPause.textContent = '▶ スタート';
+    updateUI();
+    particles.forEach(p => { p.active = false; });
+  });
+});
+
+btnStartPause.addEventListener('click', startPause);
+btnReset.addEventListener('click', reset);
+
+// ── 波紋エフェクト ─────────────────────────────────────────
+function spawnRipple() {
+  const el = document.createElement('div');
+  el.className = 'ripple';
+  // カードの中心付近に出す
+  el.style.left   = '50%';
+  el.style.top    = '50%';
+  el.style.width  = '80px';
+  el.style.height = '80px';
+  el.style.marginLeft = '-40px';
+  el.style.marginTop  = '-40px';
+  rippleCont.appendChild(el);
+  el.addEventListener('animationend', () => el.remove());
+}
+
+// ── ベル音（Web Audio API）─────────────────────────────────
+let _audioCtx = null;
+function getAudioCtx() {
+  if (!_audioCtx) {
+    try { _audioCtx = new (window.AudioContext || window.webkitAudioContext)(); } catch (_) { /* not available */ }
+  }
+  return _audioCtx;
+}
+
+function playBell() {
+  const ctx = getAudioCtx();
+  if (!ctx) return;
+  try {
+    if (ctx.state === 'suspended') ctx.resume();
+    const osc  = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.type      = 'sine';
+    osc.frequency.setValueAtTime(880, ctx.currentTime);
+    osc.frequency.exponentialRampToValueAtTime(440, ctx.currentTime + 0.8);
+    gain.gain.setValueAtTime(0.4, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 1.2);
+    osc.start(ctx.currentTime);
+    osc.stop(ctx.currentTime + 1.2);
+  } catch (_) { /* AudioContext not available */ }
+}
+
+// ── パーティクルエフェクト（Canvas）─────────────────────────
+const canvas = document.getElementById('bgCanvas');
+const ctx2d  = canvas.getContext('2d');
+const particles = [];
+const PARTICLE_COUNT = 60;
+
+function resizeCanvas() {
+  canvas.width  = window.innerWidth;
+  canvas.height = window.innerHeight;
+}
+resizeCanvas();
+window.addEventListener('resize', resizeCanvas);
+
+class Particle {
+  constructor() { this.reset(true); }
+
+  reset(init = false) {
+    this.x      = Math.random() * canvas.width;
+    this.y      = init ? Math.random() * canvas.height : canvas.height + 10;
+    this.size   = Math.random() * 3 + 1;
+    this.speedY = -(Math.random() * 0.6 + 0.3);
+    this.speedX = (Math.random() - 0.5) * 0.4;
+    this.alpha  = Math.random() * 0.6 + 0.1;
+    this.fade   = Math.random() * 0.003 + 0.001;
+    this.active = false;
+  }
+
+  update() {
+    if (!this.active) return;
+    this.x     += this.speedX;
+    this.y     += this.speedY;
+    this.alpha -= this.fade;
+    if (this.alpha <= 0 || this.y < -10) this.reset();
+  }
+
+  draw() {
+    if (!this.active || this.alpha <= 0) return;
+    const accent = getComputedStyle(root).getPropertyValue('--accent').trim();
+    ctx2d.save();
+    ctx2d.globalAlpha = this.alpha;
+    ctx2d.fillStyle   = accent;
+    ctx2d.shadowColor = accent;
+    ctx2d.shadowBlur  = 6;
+    ctx2d.beginPath();
+    ctx2d.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+    ctx2d.fill();
+    ctx2d.restore();
+  }
+}
+
+for (let i = 0; i < PARTICLE_COUNT; i++) {
+  particles.push(new Particle());
+}
+
+function animLoop() {
+  ctx2d.clearRect(0, 0, canvas.width, canvas.height);
+  particles.forEach(p => { p.update(); p.draw(); });
+  requestAnimationFrame(animLoop);
+}
+animLoop();
+
+// ── 初期描画 ─────────────────────────────────────────────────
+updateUI();
+</script>
+</body>
+</html>
